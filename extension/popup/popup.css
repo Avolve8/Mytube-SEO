@@ -1,0 +1,75 @@
+html,
+body {
+  margin: 0;
+}
+body.mt-root {
+  width: 380px;
+  background: var(--mt-bg);
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--mt-border);
+  font-size: 15px;
+}
+header strong span {
+  color: var(--mt-accent);
+}
+header a {
+  margin-left: auto;
+  font-size: 12px;
+}
+main {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.p-section-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mt-muted);
+  margin-bottom: 6px;
+}
+.p-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.p-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: 9px;
+  border: 1px solid var(--mt-border);
+  background: var(--mt-bg);
+  color: var(--mt-fg) !important;
+  font-size: 11px;
+  text-align: center;
+  cursor: pointer;
+  text-decoration: none !important;
+}
+.p-tool:hover {
+  background: var(--mt-bg2);
+}
+.p-tool svg {
+  color: var(--mt-accent);
+}
+.p-context {
+  background: var(--mt-bg2);
+  border-radius: 10px;
+  padding: 10px;
+}
+.p-context .title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
