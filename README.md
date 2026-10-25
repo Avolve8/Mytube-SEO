@@ -22,10 +22,19 @@ Un module temporaire est retiré à la fermeture de Firefox (vos données sont c
 
 ```bash
 npm install
-npm run build        # crée web-ext-artifacts/mytube_seo-1.0.0.zip
+npm run build        # crée web-ext-artifacts/mytube_seo-1.0.0.zip (manifest.json à la racine)
 ```
 
-Firefox n'installe durablement que des extensions signées : soumettez l'archive sur [addons.mozilla.org](https://addons.mozilla.org/developers/) en distribution « non listée » (signature automatique, quelques minutes), puis installez le fichier `.xpi` signé. Sur Firefox Developer Edition / Nightly, vous pouvez aussi désactiver `xpinstall.signatures.required` dans `about:config`.
+Firefox n'installe durablement que des extensions signées. Pour les faire signer par Mozilla :
+
+1. **Préparez l'archive** : `manifest.json` doit se trouver **à la racine** du zip. Utilisez `npm run build`, ou zippez le *contenu* du dossier `extension/` (sélectionnez les fichiers à l'intérieur, pas le dossier lui-même). Le « Download ZIP » de GitHub ne convient pas : le manifeste y est rangé dans `Mytube-SEO-…/extension/`, d'où l'erreur « manifest.json introuvable ».
+2. Connectez-vous au [Developer Hub](https://addons.mozilla.org/developers/) avec un compte Firefox, puis **« Soumettre un nouveau module »**.
+3. Choisissez le mode de distribution :
+   - **« Par moi-même »** (non listé) : signature automatique en quelques minutes, puis téléchargez le `.xpi` signé et glissez-le dans Firefox ;
+   - **« Sur ce site »** (listé) : l'extension devient publique sur addons.mozilla.org après relecture par Mozilla (description, captures d'écran et politique de confidentialité demandées).
+4. Téléversez le zip. À la question sur le code source, répondez **non** : le code n'est ni minifié ni compilé.
+
+Sur Firefox Developer Edition / Nightly, vous pouvez aussi désactiver `xpinstall.signatures.required` dans `about:config`.
 
 ## Fonctionnalités
 
