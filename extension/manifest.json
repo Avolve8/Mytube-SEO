@@ -1,0 +1,121 @@
+{
+  "manifest_version": 3,
+  "name": "MyTube SEO",
+  "short_name": "MyTube SEO",
+  "version": "1.0.0",
+  "description": "Boîte à outils YouTube : mots-clés, tags, SEO, classement, concurrents, miniatures, commentaires, traitement en masse, tests A/B et plus.",
+  "author": "Avolve8",
+  "homepage_url": "https://github.com/avolve8/mytube-seo",
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "mytube-seo@avolve8",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  },
+  "permissions": ["storage", "unlimitedStorage", "alarms", "notifications", "identity", "contextMenus", "clipboardWrite", "declarativeNetRequestWithHostAccess"],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "https://suggestqueries.google.com/*",
+    "https://www.googleapis.com/*",
+    "https://youtubeanalytics.googleapis.com/*",
+    "https://oauth2.googleapis.com/*",
+    "https://i.ytimg.com/*",
+    "https://yt3.ggpht.com/*",
+    "https://translate.googleapis.com/*",
+    "https://api.anthropic.com/*"
+  ],
+  "background": {
+    "scripts": [
+      "lib/core.js",
+      "lib/storage.js",
+      "lib/text.js",
+      "lib/seo.js",
+      "lib/keyword.js",
+      "lib/youtube.js",
+      "lib/ytapi.js",
+      "lib/oauth.js",
+      "lib/translate.js",
+      "lib/ai.js",
+      "lib/research.js",
+      "background/jobs.js",
+      "background/background.js"
+    ]
+  },
+  "action": {
+    "default_title": "MyTube SEO",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+  "options_ui": {
+    "page": "app/options.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://www.youtube.com/*", "*://m.youtube.com/*"],
+      "js": [
+        "lib/core.js",
+        "lib/storage.js",
+        "lib/text.js",
+        "lib/seo.js",
+        "lib/keyword.js",
+        "lib/youtube.js",
+        "lib/widgets.js",
+        "content/styles.js",
+        "content/common.js",
+        "content/watch.js",
+        "content/search.js",
+        "content/channel.js",
+        "content/comments.js",
+        "content/shortcuts.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://studio.youtube.com/*"],
+      "js": [
+        "lib/core.js",
+        "lib/storage.js",
+        "lib/text.js",
+        "lib/seo.js",
+        "lib/keyword.js",
+        "lib/youtube.js",
+        "lib/widgets.js",
+        "content/styles.js",
+        "content/common.js",
+        "content/comments.js",
+        "content/studio.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "open-dashboard": {
+      "suggested_key": {
+        "default": "Alt+Shift+Y"
+      },
+      "description": "Ouvrir le tableau de bord MyTube SEO"
+    },
+    "open-keywords": {
+      "suggested_key": {
+        "default": "Alt+Shift+K"
+      },
+      "description": "Ouvrir l'explorateur de mots-clés"
+    }
+  }
+}
