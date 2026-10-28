@@ -89,6 +89,22 @@
 .mt-progress>div{height:100%;background:var(--mt-accent);transition:width .2s}
 .mt-chart text{fill:var(--mt-muted);font-size:10px}
 .mt-chart .grid{stroke:var(--mt-border);stroke-width:1}
+.mt-chart{cursor:crosshair;touch-action:pan-y}
+.mt-chart .mt-chart-guide{stroke:var(--mt-muted);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.mt-bar-row{border-radius:6px;padding:2px 4px;margin:0 -4px;cursor:default}
+.mt-bar-row:hover{background:var(--mt-bg2)}
+.mt-bar-row:hover .mt-meter-fill{filter:brightness(1.1)}
+.mt-heat td{cursor:default}
+.mt-heat td:hover{outline:2px solid var(--mt-fg);outline-offset:-2px}
+.mt-tooltip{position:fixed;z-index:2147483647;display:none;pointer-events:none;background:#1f2229;color:#fff;border-radius:8px;padding:7px 10px;font-size:12px;line-height:1.4;box-shadow:0 6px 24px rgba(0,0,0,.28);max-width:300px}
+.mt-root[data-theme="dark"] .mt-tooltip{background:#f1f2f5;color:#101318}
+.mt-tooltip-title{font-weight:700;margin-bottom:3px}
+.mt-tooltip-row+.mt-tooltip-row{margin-top:2px}
+.mt-tooltip-line{display:flex;align-items:baseline;gap:6px}
+.mt-tooltip-line strong{flex:none;margin-left:auto;padding-left:10px}
+.mt-tooltip-label{flex:1;min-width:0;opacity:.85}
+.mt-tooltip-dot{width:9px;height:9px;border-radius:50%;flex:none;align-self:center}
+.mt-tooltip-sub{opacity:.7;font-size:11px;padding-left:15px;overflow-wrap:anywhere}
 .mt-cloud{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;justify-content:center;padding:10px;line-height:1.1}
 .mt-cloud span{cursor:default}
 .mt-heat{border-collapse:separate;border-spacing:2px;font-size:10.5px}
@@ -461,11 +477,114 @@
 
   const PALETTE = ['#e5352b', '#1764d8', '#0f9d58', '#d99a00', '#8e44ad', '#16a2b8', '#ff7a1a', '#6c757d'];
 
+  /* infobulle partagée par tous les graphiques (suit le curseur) */
+
+  let tipEl = null;
+  let tipOwner = null;
+
+  function tooltipHide() {
+    if (tipEl) tipEl.style.display = 'none';
+    tipOwner = null;
+  }
+
+  function tooltipShow(owner, content, clientX, clientY) {
+    const parent = overlayParent();
+    if (!tipEl || !tipEl.isConnected || tipEl.parentNode !== parent) {
+      tipEl = el('div', { class: 'mt-tooltip', role: 'tooltip' });
+      parent.appendChild(tipEl);
+    }
+    tipOwner = owner;
+    MT.fill(tipEl, content);
+    tipEl.style.display = 'block';
+    const w = tipEl.offsetWidth;
+    const h = tipEl.offsetHeight;
+    const vw = document.documentElement.clientWidth || window.innerWidth;
+    const vh = document.documentElement.clientHeight || window.innerHeight;
+    let left = clientX + 14;
+    if (left + w > vw - 8) left = Math.max(8, clientX - w - 14);
+    let top = clientY + 14;
+    if (top + h > vh - 8) top = Math.max(8, clientY - h - 14);
+    tipEl.style.left = left + 'px';
+    tipEl.style.top = top + 'px';
+  }
+
+  // l'élément survolé peut disparaître (redessin, navigation) sans déclencher pointerleave
+  if (typeof document !== 'undefined') {
+    document.addEventListener(
+      'pointermove',
+      (e) => {
+        if (tipOwner && !(tipOwner.isConnected && e.composedPath().includes(tipOwner))) tooltipHide();
+      },
+      true
+    );
+    window.addEventListener('hashchange', tooltipHide);
+    window.addEventListener('scroll', tooltipHide, true);
+  }
+
   /**
-   * Graphique linéaire. series: [{name, points: [{x (ms ou nombre), y}], color}]
-   * opts: {height, invert (rang : plus petit = mieux), yFormat, xFormat}
+   * Contenu d'infobulle : un titre puis des lignes {label, value, color, sub}.
    */
-  function lineChart(series, { height = 180, width = 640, invert = false, yFormat = MT.fmt.num, xFormat = (x) => MT.fmt.date(x), area = false } = {}) {
+  function tipContent(title, rows = []) {
+    return el(
+      'div',
+      null,
+      title ? el('div', { class: 'mt-tooltip-title' }, title) : null,
+      rows
+        .filter(Boolean)
+        .map((r) =>
+          el(
+            'div',
+            { class: 'mt-tooltip-row' },
+            el(
+              'div',
+              { class: 'mt-tooltip-line' },
+              r.color ? el('span', { class: 'mt-tooltip-dot', style: { background: r.color } }) : null,
+              el('span', { class: 'mt-tooltip-label' }, r.label),
+              r.value != null ? el('strong', null, r.value) : null
+            ),
+            r.sub ? el('div', { class: 'mt-tooltip-sub' }, r.sub) : null
+          )
+        )
+    );
+  }
+
+  /** Associe une infobulle à un élément ; contentFn(event) renvoie un contenu ou null. */
+  function hoverTip(node, contentFn) {
+    const move = (e) => {
+      const c = contentFn(e);
+      if (c) tooltipShow(node, c, e.clientX, e.clientY);
+      else tooltipHide();
+    };
+    node.addEventListener('pointermove', move);
+    node.addEventListener('pointerdown', move);
+    node.addEventListener('pointerleave', tooltipHide);
+    return node;
+  }
+
+  /** Point rond qui ne se déforme pas avec preserveAspectRatio="none". */
+  function dot(x, y, color, size) {
+    return svg('path', {
+      d: `M${x.toFixed(1)},${y.toFixed(1)}l0.01,0`,
+      stroke: color,
+      'stroke-width': size,
+      'stroke-linecap': 'round',
+      'vector-effect': 'non-scaling-stroke',
+      fill: 'none',
+    });
+  }
+
+  function rankOf(value, values) {
+    return 1 + values.filter((v) => v > value).length;
+  }
+
+  /**
+   * Graphique linéaire. series: [{name, points: [{x (ms ou nombre), y, label?}], color}]
+   * opts: {height, invert (rang : plus petit = mieux), yFormat, xFormat, xTipFormat (abscisse dans l'infobulle)}
+   * Au survol : ligne verticale, points mis en évidence et valeurs de chaque série.
+   */
+  function lineChart(series, { height = 180, width = 640, invert = false, yFormat = MT.fmt.num, xFormat = (x) => MT.fmt.date(x), xTipFormat = xFormat, area = false } = {}) {
+    // l'infobulle donne la valeur exacte (l'axe arrondit : « 11,8 k »)
+    const yTipFormat = yFormat === MT.fmt.num ? MT.fmt.int : yFormat;
     const pts = series.flatMap((s) => s.points.filter((p) => p.y != null));
     if (!pts.length) return empty('Pas encore de données');
     const pad = { l: 46, r: 12, t: 10, b: 24 };
@@ -499,19 +618,71 @@
       const xv = xMin + ((xMax - xMin) * i) / 3;
       g.appendChild(svg('text', { x: X(xv), y: height - 6, 'text-anchor': i === 0 ? 'start' : i === 3 ? 'end' : 'middle' }, xFormat(xv)));
     }
+    const drawn = [];
     series.forEach((s, si) => {
       const color = s.color || PALETTE[si % PALETTE.length];
       const p = s.points.filter((q) => q.y != null).sort((a, b) => a.x - b.x);
       if (!p.length) return;
+      drawn.push({ name: s.name, color, points: p });
       const d = p.map((q, i) => `${i ? 'L' : 'M'}${X(q.x).toFixed(1)},${Y(q.y).toFixed(1)}`).join(' ');
       if (area && !invert) g.appendChild(svg('path', { d: `${d} L${X(p[p.length - 1].x)},${height - pad.b} L${X(p[0].x)},${height - pad.b} Z`, fill: color, opacity: 0.12 }));
       g.appendChild(svg('path', { d, fill: 'none', stroke: color, 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }));
-      for (const q of p) {
-        const dot = svg('circle', { cx: X(q.x), cy: Y(q.y), r: 2.6, fill: color });
-        dot.appendChild(svg('title', null, `${s.name ? s.name + ' — ' : ''}${xFormat(q.x)} : ${yFormat(q.y)}`));
-        g.appendChild(dot);
-      }
+      for (const q of p) g.appendChild(dot(X(q.x), Y(q.y), color, 5));
     });
+
+    // couche de survol
+    const guide = svg('line', { class: 'mt-chart-guide', x1: 0, x2: 0, y1: pad.t, y2: height - pad.b, visibility: 'hidden' });
+    const markers = svg('g', { 'pointer-events': 'none' });
+    g.append(guide, markers, svg('rect', { x: pad.l, y: 0, width: width - pad.l - pad.r, height, fill: 'transparent', 'pointer-events': 'all' }));
+    const clearHover = () => {
+      guide.setAttribute('visibility', 'hidden');
+      MT.clear(markers);
+    };
+    hoverTip(g, (e) => {
+      const r = g.getBoundingClientRect();
+      if (!r.width) return null;
+      const scale = r.width / width; // pixels écran par unité du viewBox
+      const vx = ((e.clientX - r.left) / r.width) * width;
+      let nearest = null;
+      for (const s of drawn) {
+        for (const q of s.points) {
+          const dist = Math.abs(X(q.x) - vx);
+          if (!nearest || dist < nearest.dist) nearest = { dist, q };
+        }
+      }
+      if (!nearest || nearest.dist * scale > 40) {
+        clearHover();
+        return null;
+      }
+      const xHit = X(nearest.q.x);
+      // points de chaque série alignés sur la position survolée (tolérance de 12 px)
+      const hits = [];
+      for (const s of drawn) {
+        let best = null;
+        for (const q of s.points) {
+          const dist = Math.abs(X(q.x) - xHit);
+          if (!best || dist < best.dist) best = { dist, q };
+        }
+        if (best && best.dist * scale <= 12) hits.push({ s, q: best.q });
+      }
+      guide.setAttribute('x1', xHit);
+      guide.setAttribute('x2', xHit);
+      guide.setAttribute('visibility', 'visible');
+      MT.clear(markers);
+      for (const h of hits) markers.append(dot(X(h.q.x), Y(h.q.y), '#ffffff', 12), dot(X(h.q.x), Y(h.q.y), h.s.color, 8));
+      const sameX = hits.every((h) => h.q.x === nearest.q.x);
+      return tipContent(
+        sameX ? xTipFormat(nearest.q.x) : null,
+        hits.map((h) => ({
+          color: h.s.color,
+          label: h.s.name || 'Valeur',
+          value: yTipFormat(h.q.y),
+          sub: [sameX ? null : xTipFormat(h.q.x), h.q.label].filter(Boolean).join(' · ') || null,
+        }))
+      );
+    });
+    g.addEventListener('pointerleave', clearHover);
+
     const legend =
       series.length > 1
         ? el(
@@ -530,39 +701,72 @@
     return el('div', null, g, legend);
   }
 
-  /** Barres horizontales : items = [{label, value, color}] */
-  function barChart(items, { format = MT.fmt.num, max } = {}) {
+  /**
+   * Barres horizontales : items = [{label, value, color, details?: [texte]}]
+   * opts.share : afficher la part de chaque barre dans le total (défaut : oui) ; opts.valueLabel : nom de la valeur.
+   */
+  function barChart(items, { format = MT.fmt.num, max, share = true, valueLabel = 'Valeur' } = {}) {
     const m = max || Math.max(1, ...items.map((i) => i.value || 0));
+    const values = items.map((i) => i.value || 0);
+    const total = values.reduce((a, b) => a + b, 0);
+    const tipFormat = format === MT.fmt.num ? MT.fmt.int : format;
     return el(
       'div',
       { class: 'mt-col', style: 'gap:6px' },
-      items.map((it, i) =>
-        el(
+      items.map((it, i) => {
+        const color = it.color || PALETTE[i % PALETTE.length];
+        const row = el(
           'div',
-          { class: 'mt-col', style: 'gap:2px' },
+          { class: 'mt-col mt-bar-row', style: 'gap:2px' },
           el(
             'div',
             { class: 'mt-row mt-small', style: 'justify-content:space-between' },
             el('span', { class: 'mt-ellipsis', style: 'max-width:75%' }, it.label),
             el('strong', null, format(it.value))
           ),
-          el(
-            'div',
-            { class: 'mt-meter-bar' },
-            el('div', { class: 'mt-meter-fill', style: { width: ((it.value || 0) / m) * 100 + '%', background: it.color || PALETTE[i % PALETTE.length] } })
-          )
-        )
-      )
+          el('div', { class: 'mt-meter-bar' }, el('div', { class: 'mt-meter-fill', style: { width: ((it.value || 0) / m) * 100 + '%', background: color } }))
+        );
+        return hoverTip(row, () =>
+          tipContent(it.label, [
+            { color, label: valueLabel, value: tipFormat(it.value) },
+            share && total ? { label: 'Part du total', value: MT.fmt.pct((it.value || 0) / total, 1) } : null,
+            items.length > 1 ? { label: 'Rang', value: `${rankOf(it.value || 0, values)} sur ${items.length}` } : null,
+            ...(it.details || []).map((d) => ({ label: d })),
+          ])
+        );
+      })
     );
   }
 
-  function sparkline(values, { width = 90, height = 24, color = 'var(--mt-accent)' } = {}) {
-    const v = values.filter((x) => x != null);
-    if (v.length < 2) return el('span', { class: 'mt-muted' }, '—');
+  /** Mini-courbe. opts.labels : texte de l'infobulle pour chaque valeur (même ordre que values). */
+  function sparkline(values, { width = 90, height = 24, color = 'var(--mt-accent)', labels, format = MT.fmt.num } = {}) {
+    const idx = values.map((v, i) => (v != null ? i : -1)).filter((i) => i >= 0);
+    if (idx.length < 2) return el('span', { class: 'mt-muted' }, '—');
+    const v = idx.map((i) => values[i]);
     const min = Math.min(...v);
     const max = Math.max(...v);
-    const d = v.map((y, i) => `${i ? 'L' : 'M'}${((i / (v.length - 1)) * width).toFixed(1)},${(height - 2 - ((y - min) / (max - min || 1)) * (height - 4)).toFixed(1)}`).join(' ');
-    return svg('svg', { width, height, viewBox: `0 0 ${width} ${height}` }, svg('path', { d, fill: 'none', stroke: color, 'stroke-width': 1.6 }));
+    const px = (k) => (k / (v.length - 1)) * width;
+    const py = (y) => height - 2 - ((y - min) / (max - min || 1)) * (height - 4);
+    const d = v.map((y, k) => `${k ? 'L' : 'M'}${px(k).toFixed(1)},${py(y).toFixed(1)}`).join(' ');
+    const marker = svg('circle', { r: 2.6, fill: color, visibility: 'hidden' });
+    const s = svg(
+      'svg',
+      { width, height, viewBox: `0 0 ${width} ${height}`, style: 'cursor:crosshair' },
+      svg('path', { d, fill: 'none', stroke: color, 'stroke-width': 1.6 }),
+      marker,
+      svg('rect', { width, height, fill: 'transparent' })
+    );
+    hoverTip(s, (e) => {
+      const r = s.getBoundingClientRect();
+      const k = Math.max(0, Math.min(v.length - 1, Math.round(((e.clientX - r.left) / r.width) * (v.length - 1))));
+      marker.setAttribute('cx', px(k));
+      marker.setAttribute('cy', py(v[k]));
+      marker.setAttribute('visibility', 'visible');
+      const label = labels ? labels[idx[k]] : null;
+      return tipContent(null, [{ color, label: label || format(v[k]) }, { label: `Point ${k + 1} sur ${v.length}` }]);
+    });
+    s.addEventListener('pointerleave', () => marker.setAttribute('visibility', 'hidden'));
+    return s;
   }
 
   function wordCloud(words, { max = 60, onClick } = {}) {
@@ -570,20 +774,22 @@
     if (!list.length) return empty('Pas assez de texte');
     const top = list[0].count;
     const low = list[list.length - 1].count;
+    const total = list.reduce((a, w) => a + w.count, 0);
+    const counts = list.map((w) => w.count);
     const shuffled = [...list].sort((a, b) => (a.word < b.word ? -1 : 1));
     return el(
       'div',
       { class: 'mt-cloud' },
       shuffled.map((w, i) => {
         const t = top === low ? 0.5 : (w.count - low) / (top - low);
-        return el(
+        const color = PALETTE[i % PALETTE.length];
+        const span = el(
           'span',
           {
-            title: `${w.word} : ${w.count}`,
             style: {
               fontSize: (12 + t * 26).toFixed(0) + 'px',
               fontWeight: t > 0.5 ? '700' : '500',
-              color: PALETTE[i % PALETTE.length],
+              color,
               opacity: (0.65 + t * 0.35).toFixed(2),
               cursor: onClick ? 'pointer' : 'default',
             },
@@ -591,12 +797,23 @@
           },
           w.word
         );
+        return hoverTip(span, () =>
+          tipContent(w.word, [
+            { color, label: 'Occurrences', value: MT.fmt.int(w.count) },
+            { label: 'Part des mots affichés', value: MT.fmt.pct(w.count / total, 1) },
+            { label: 'Rang', value: `${rankOf(w.count, counts)} sur ${list.length}` },
+            onClick ? { label: 'Cliquer pour filtrer les commentaires' } : null,
+          ])
+        );
       })
     );
   }
 
-  /** Carte de chaleur : matrix[r][c] = {value, count} ; valeurs normalisées automatiquement. */
-  function heatmap(matrix, rowLabels, colLabels, { format = (v) => MT.fmt.dec(v), title } = {}) {
+  /**
+   * Carte de chaleur : matrix[r][c] = {value, count} ; valeurs normalisées automatiquement.
+   * opts.title(cell) : texte complémentaire ; opts.cellLabel(r, c) : titre de l'infobulle ; valueLabel / countLabel : noms des mesures.
+   */
+  function heatmap(matrix, rowLabels, colLabels, { format = (v) => MT.fmt.dec(v), title, cellLabel, valueLabel = 'Valeur', countLabel = 'Nombre' } = {}) {
     const vals = matrix
       .flat()
       .filter((c) => c && c.value != null)
@@ -620,13 +837,22 @@
             'tr',
             null,
             el('th', { style: 'text-align:right' }, rowLabels[r]),
-            row.map((cell) => {
-              if (!cell || cell.value == null) return el('td', { style: { background: 'var(--mt-bg2)' } });
+            row.map((cell, c) => {
+              const head = cellLabel ? cellLabel(r, c) : `${rowLabels[r]} · ${colLabels[c]}`;
+              if (!cell || cell.value == null) return hoverTip(el('td', { style: { background: 'var(--mt-bg2)' } }), () => tipContent(head, [{ label: 'Aucune donnée' }]));
               const t = max === min ? 0.5 : (cell.value - min) / (max - min);
-              return el(
+              const td = el(
                 'td',
-                { style: { background: `color-mix(in srgb, var(--mt-great) ${Math.round(15 + t * 75)}%, var(--mt-bg2))` }, title: title ? title(cell) : format(cell.value) },
+                { style: { background: `color-mix(in srgb, var(--mt-great) ${Math.round(15 + t * 75)}%, var(--mt-bg2))` } },
                 cell.count != null ? String(cell.count) : ''
+              );
+              return hoverTip(td, () =>
+                tipContent(head, [
+                  { color: 'var(--mt-great)', label: valueLabel, value: format(cell.value) },
+                  cell.count != null ? { label: countLabel, value: MT.fmt.int(cell.count) } : null,
+                  { label: 'Rang', value: `${rankOf(cell.value, vals)} sur ${vals.length}` },
+                  title ? { label: title(cell) } : null,
+                ])
               );
             })
           )
@@ -805,6 +1031,9 @@
     sparkline,
     wordCloud,
     heatmap,
+    hoverTip,
+    tipContent,
+    tooltipHide,
     toast,
     modal,
     confirm,

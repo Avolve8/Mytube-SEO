@@ -130,7 +130,7 @@
           'Mots les plus fréquents',
           W.barChart(
             words.slice(0, 15).map((w) => ({ label: w.word, value: w.count })),
-            { format: String }
+            { format: String, valueLabel: 'Occurrences' }
           )
         ),
         A.card(
@@ -138,7 +138,7 @@
           phrases.length
             ? W.barChart(
                 phrases.slice(0, 15).map((p) => ({ label: p.phrase, value: p.count })),
-                { format: String }
+                { format: String, valueLabel: 'Occurrences' }
               )
             : W.empty('Pas assez d’expressions répétées')
         )
@@ -168,7 +168,7 @@
               { label: `Neutres (${neu})`, value: (neu / total) * 100, color: 'var(--mt-muted)' },
               { label: `Négatifs (${neg.length})`, value: (neg.length / total) * 100, color: 'var(--mt-bad)' },
             ],
-            { format: (v) => fmt.dec(v, 0) + ' %', max: 100 }
+            { format: (v) => fmt.dec(v, 0) + ' %', max: 100, share: false, valueLabel: 'Part des commentaires' }
           )
         )
       ),

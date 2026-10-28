@@ -82,6 +82,8 @@ Légende des prérequis : — aucun · 🔑 clé API YouTube (facultative, amél
 | Scheduled Video Updates | Mises à jour programmées : titre, description, tags, miniature, visibilité | 🔐 |
 | Video Export | Export CSV/JSON des vidéos d'une chaîne (y compris privées avec connexion) | 🔐 pour les vidéos privées |
 
+Tous les graphiques (courbes, barres, mini-courbes, carte de chaleur, nuage de mots) affichent au survol les statistiques du ou des points survolés : date ou abscisse, valeur exacte de chaque série, part du total, rang, et le titre de la vidéo quand il est connu.
+
 ## Configuration (Paramètres)
 
 - **Région / langue** : les recherches et classements sont non personnalisés, pour la région choisie.

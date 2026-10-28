@@ -242,7 +242,12 @@
             2,
             A.card(
               'Sources de trafic',
-              traffic.error ? errBox(traffic) : W.barChart(traffic.map((x) => ({ label: TRAFFIC[x.insightTrafficSourceType] || x.insightTrafficSourceType, value: x.views })))
+              traffic.error
+                ? errBox(traffic)
+                : W.barChart(
+                    traffic.map((x) => ({ label: TRAFFIC[x.insightTrafficSourceType] || x.insightTrafficSourceType, value: x.views })),
+                    { valueLabel: 'Vues' }
+                  )
             ),
             A.card(
               'Termes de recherche YouTube',
@@ -266,8 +271,24 @@
           ),
           A.grid(
             2,
-            A.card('Pays', countries.error ? errBox(countries) : W.barChart(countries.map((x) => ({ label: x.country, value: x.views })))),
-            A.card('Appareils', devices.error ? errBox(devices) : W.barChart(devices.map((x) => ({ label: DEVICES[x.deviceType] || x.deviceType, value: x.views }))))
+            A.card(
+              'Pays',
+              countries.error
+                ? errBox(countries)
+                : W.barChart(
+                    countries.map((x) => ({ label: x.country, value: x.views })),
+                    { valueLabel: 'Vues' }
+                  )
+            ),
+            A.card(
+              'Appareils',
+              devices.error
+                ? errBox(devices)
+                : W.barChart(
+                    devices.map((x) => ({ label: DEVICES[x.deviceType] || x.deviceType, value: x.views })),
+                    { valueLabel: 'Vues' }
+                  )
+            )
           )
         );
         if (params.v && byId.get(params.v)) retention(retentionBox, byId.get(params.v), auth, days);

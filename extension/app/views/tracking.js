@@ -49,7 +49,7 @@
             `Historique : « ${item.keyword} »`,
             el('div', { class: 'mt-muted', style: 'margin-bottom:8px' }, item.title),
             pts.some((p) => p.y != null)
-              ? W.lineChart([{ name: 'Position', points: pts }], { invert: true, yFormat: (v) => '#' + Math.round(v), height: 220 })
+              ? W.lineChart([{ name: 'Position', points: pts }], { invert: true, yFormat: (v) => '#' + Math.round(v), xTipFormat: fmt.datetime, height: 220 })
               : W.empty('Pas encore classé dans le top suivi.'),
             item.top && item.top.length
               ? el(
@@ -137,7 +137,18 @@
               { key: 'change', label: 'Dernière évol.', num: true, render: (r) => arrow(r.change) },
               { key: 'week', label: '7 jours', num: true, render: (r) => arrow(r.week) },
               { key: 'bestRank', label: 'Meilleure', num: true, render: (r) => (r.bestRank != null ? '#' + r.bestRank : '—') },
-              { key: 'spark', label: 'Tendance', sortable: false, render: (r) => W.sparkline((r.history || []).slice(-30).map((h) => (h.rank != null ? -h.rank : null))) },
+              {
+                key: 'spark',
+                label: 'Tendance',
+                sortable: false,
+                render: (r) => {
+                  const hist = (r.history || []).slice(-30);
+                  return W.sparkline(
+                    hist.map((h) => (h.rank != null ? -h.rank : null)),
+                    { labels: hist.map((h) => `${fmt.datetime(h.t)} : #${h.rank}`) }
+                  );
+                },
+              },
               { key: 'lastChecked', label: 'Vérifié', num: true, render: (r) => (r.lastChecked ? fmt.ago(r.lastChecked) : '—') },
               {
                 key: 'a',

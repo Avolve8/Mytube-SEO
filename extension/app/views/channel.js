@@ -132,9 +132,12 @@
               `Hypothèse : RPM de ${s.rpmMin} à ${s.rpmMax} ${c$} pour 1 000 vues (modifiable dans les paramètres). Estimation indicative : le RPM réel dépend de la niche, du pays et du format.`
             )
           ),
-          A.card('Jours de publication (vidéos récentes)', W.barChart(weekdayCounts, { format: (v) => String(v) }))
+          A.card('Jours de publication (vidéos récentes)', W.barChart(weekdayCounts, { format: (v) => String(v), valueLabel: 'Vidéos publiées' }))
         ),
-        A.card('Vues des vidéos récentes', W.lineChart([{ name: 'Vues', points: dated.map((v) => ({ x: v.publishedAt, y: v.views })) }], { height: 200, area: true })),
+        A.card(
+          'Vues des vidéos récentes',
+          W.lineChart([{ name: 'Vues', points: dated.map((v) => ({ x: v.publishedAt, y: v.views, label: v.title })) }], { height: 200, area: true })
+        ),
         A.card(
           'Vidéos récentes',
           W.table(
@@ -308,11 +311,15 @@
           const hours = Array.from({ length: blocks }, (_, i) => `${String(i * 3).padStart(2, '0')}h`);
           const byDay = DAYS.map((d, i) => {
             const vs = all.filter((v) => (new Date(v.publishedAt).getDay() + 6) % 7 === i);
-            return { label: `${d} (${vs.length})`, value: vs.length ? Math.exp(MT.mean(vs.map((v) => Math.log(v.perf)))) : 0 };
+            return { label: `${d} (${vs.length})`, value: vs.length ? Math.exp(MT.mean(vs.map((v) => Math.log(v.perf)))) : 0, details: [`${vs.length} vidéo(s) analysée(s)`] };
           });
           const byHour = hours.map((h, i) => {
             const vs = all.filter((v) => Math.floor(new Date(v.publishedAt).getHours() / 3) === i);
-            return { label: `${h}–${String(i * 3 + 3).padStart(2, '0')}h (${vs.length})`, value: vs.length ? Math.exp(MT.mean(vs.map((v) => Math.log(v.perf)))) : 0 };
+            return {
+              label: `${h}–${String(i * 3 + 3).padStart(2, '0')}h (${vs.length})`,
+              value: vs.length ? Math.exp(MT.mean(vs.map((v) => Math.log(v.perf)))) : 0,
+              details: [`${vs.length} vidéo(s) analysée(s)`],
+            };
           });
           const slots = [];
           cells.forEach((row, d) => row.forEach((cell, b) => cell && cell.count >= 2 && slots.push({ d, b, ...cell })));
@@ -374,12 +381,18 @@
             ),
             A.card(
               'Carte de chaleur (performance moyenne, nombre de vidéos)',
-              W.heatmap(cells, DAYS, hours, { title: (cell) => `Performance × ${fmt.dec(cell.value, 2)} — ${cell.count} vidéo(s)` })
+              W.heatmap(cells, DAYS, hours, {
+                format: (v) => '× ' + fmt.dec(v, 2),
+                valueLabel: 'Performance moyenne',
+                countLabel: 'Vidéos',
+                cellLabel: (r, b) => `${DAYS[r]}, ${hours[b]}–${String(b * 3 + 3).padStart(2, '0')}h`,
+                title: () => '× 1 = vues attendues pour l’âge de la vidéo',
+              })
             ),
             A.grid(
               2,
-              A.card('Par jour', W.barChart(byDay, { format: (v) => '× ' + fmt.dec(v, 2) })),
-              A.card('Par créneau horaire', W.barChart(byHour, { format: (v) => '× ' + fmt.dec(v, 2) }))
+              A.card('Par jour', W.barChart(byDay, { format: (v) => '× ' + fmt.dec(v, 2), share: false, valueLabel: 'Performance moyenne' })),
+              A.card('Par créneau horaire', W.barChart(byHour, { format: (v) => '× ' + fmt.dec(v, 2), share: false, valueLabel: 'Performance moyenne' }))
             ),
             A.card(
               'Vidéos analysées',
